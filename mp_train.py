@@ -19,8 +19,16 @@ def scale(feature_matrix):
 def relu(z):
     return np.maximum(0, z)
 
+def drelu(z):
+    z[z <= 0] = 0
+    z[z > 0] = 1
+    return z
+
 def softmax(z):
     return np.exp(z) / np.sum(np.exp(z), axis=0)
+
+def dsoftmax(z):
+    return z * (1. - z)
 
 def feedforward(wb, x, layers, neurons):
     za = []
@@ -29,8 +37,12 @@ def feedforward(wb, x, layers, neurons):
         z = np.dot(wb[i]["w"], prev_x) + wb[i]["b"]
         a = softmax(z) if i == layers - 2 else relu(z)
         za.append({ "z": z, "a": a})
-    y_mp = za[layers - 2]["a"]
+    y_mp = za[layers - 2]["a"][1]
     return y_mp, za
+
+def loss(y, y_mp):
+    n = y.shape[1]
+    return -1 / n * (np.dot(y, np.log(y_mp).T) + np.dot(1 - y, np.log(1 - y_mp).T))
 
 def read_data(filename, feature_number):
     # checks
@@ -67,6 +79,10 @@ if __name__ == '__main__':
     feature_number = 30
     x, y = read_data(sys.argv[1], feature_number)
     x = scale(x)
+    x_val = x[:, 455:]
+    x = x[:, :455]
+    y_val = y[:, 455:]
+    y = y[:, :455]
     layers = 4
     neurons = [feature_number, int(feature_number * 2 / 3 + 1), int(feature_number * 2 / 3 + 1), 2]
     learning_rate = 0.01
@@ -78,3 +94,7 @@ if __name__ == '__main__':
         b = np.random.randn(neurons[i + 1], 1)
         wb.append({ "w": w, "b": b})
     y_mp, za = feedforward(wb, x, layers, neurons)
+    y_mp_val, za_val = feedforward(wb, x_val, layers, neurons)
+    l = loss(y, y_mp)
+    l_val = loss(y_val, y_mp_val)
+    print("epoch - loss: %f - val_loss: %f" % (l, l_val))
