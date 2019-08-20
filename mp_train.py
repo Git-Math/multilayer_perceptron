@@ -3,6 +3,8 @@ import os
 import csv
 import numpy as np
 import random
+import matplotlib
+import matplotlib.pyplot as plt
 
 import utils
 from utils import error
@@ -62,6 +64,16 @@ def backpropagation(x, y, y_mp, wb, za, learning_rate):
         wb[i]["b"] -= learning_rate * dloss_wb[i]["b"]
     return wb
 
+def print_loss_graph(l, l_val):
+    print(l_val)
+    plt.plot(l, label = "Training Loss")
+    plt.plot(l_val, label = "Validation Loss")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.legend()
+    plt.title("Loss Graph")
+    plt.show()
+
 def read_data(filename, feature_number):
     # checks
     if not os.path.isfile(filename):
@@ -99,8 +111,8 @@ if __name__ == '__main__':
     if not os.path.isfile(sys.argv[1]):
         error('no such file: %s' % sys.argv[1])
 
-    learning_rate = 0.05
-    epoch = 10000
+    learning_rate = 0.03
+    epoch = 2500
     feature_number = 30
     x, y = read_data(sys.argv[1], feature_number)
     x = scale(x)
@@ -108,8 +120,13 @@ if __name__ == '__main__':
     x = x[:, :455]
     y_val = y[:, 455:]
     y = y[:, :455]
-    layers = 4
-    neurons = [feature_number, int(feature_number * 2 / 3 + 1), int(feature_number * 2 / 3 + 1), 2]
+    l = []
+    l_val = []
+    layers = 7
+    neurons = [feature_number]
+    for i in range(layers - 2):
+        neurons.append(int(feature_number * 2 / 3 + 1))
+    neurons.append(2)
     # He initialization
     np.random.seed(0)
     wb = []
@@ -120,17 +137,19 @@ if __name__ == '__main__':
     for i in range(epoch + 1):
         y_mp, za = feedforward(wb, x, layers, neurons)
         y_mp_val, za_val = feedforward(wb, x_val, layers, neurons)
-        l = loss(y[0], y_mp[0])
-        l_val = loss(y_val[0], y_mp_val[0])
-        if i % 1000 == 0:
-            print("epoch %d/%d - loss: %f - val_loss: %f" % (i, epoch, l, l_val))
+        l.append(loss(y[0], y_mp[0]))
+        l_val.append(loss(y_val[0], y_mp_val[0]))
+        if i % 100 == 0:
+            print("epoch %d/%d - loss: %f - val_loss: %f" % (i, epoch, l[-1], l_val[-1]))
         wb = backpropagation(x, y, y_mp, wb, za, learning_rate)
     count = 0
     for i in range(y.shape[1]):
         if y[0][i] == 1  and y_mp[0][i] > 0.5 or y[0][i] == 0  and y_mp[0][i] < 0.5:
             count += 1
-    print(count)
+    print(count / y.shape[1])
+    count = 0
     for i in range(y_val.shape[1]):
         if y_val[0][i] == 1  and y_mp_val[0][i] > 0.5 or y_val[0][i] == 0  and y_mp_val[0][i] < 0.5:
             count += 1
-    print(count)
+    print(count / y_val.shape[1])
+    print_loss_graph(l, l_val)
