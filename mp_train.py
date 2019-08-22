@@ -9,6 +9,12 @@ import matplotlib.pyplot as plt
 import utils
 from utils import error
 
+train_data_dirname = "train_data"
+layers_filename = "layers.csv"
+neurons_filename = "neurons.csv"
+w_filename = "w"
+b_filename = "b"
+
 def usage():
     error('%s [dataset]' % sys.argv[0])
 
@@ -65,7 +71,6 @@ def backpropagation(x, y, y_mp, wb, za, learning_rate):
     return wb
 
 def print_loss_graph(l, l_val):
-    print(l_val)
     plt.plot(l, label = "Training Loss")
     plt.plot(l_val, label = "Validation Loss")
     plt.xlabel("Epoch")
@@ -73,6 +78,23 @@ def print_loss_graph(l, l_val):
     plt.legend()
     plt.title("Loss Graph")
     plt.show()
+
+def save_train_data(wb, layers, neurons):
+    try:
+        os.makedirs(train_data_dirname, exist_ok=True)
+        with open(train_data_dirname + "/" + layers_filename, "w") as layers_file:
+            layers_file.write(str(layers) + "\n")
+            layers_file.close()
+        with open(train_data_dirname + "/" + neurons_filename, "w") as neurons_file:
+            for (i, e) in enumerate(neurons):
+                neurons_file.write(str(e))
+                neurons_file.write("\n") if i == len(neurons) - 1 else neurons_file.write(",")
+            neurons_file.close()
+        for (i, e) in enumerate(wb):
+            np.save(train_data_dirname + "/" + w_filename + str(i), e["w"])
+            np.save(train_data_dirname + "/" + b_filename + str(i), e["b"])
+    except:
+        error("save train data failed")
 
 def read_data(filename, feature_number):
     # checks
@@ -112,14 +134,15 @@ if __name__ == '__main__':
         error('no such file: %s' % sys.argv[1])
 
     learning_rate = 0.03
-    epoch = 2500
+    epoch = 1780
     feature_number = 30
     x, y = read_data(sys.argv[1], feature_number)
     x = scale(x)
-    x_val = x[:, 455:]
-    x = x[:, :455]
-    y_val = y[:, 455:]
-    y = y[:, :455]
+    train_size = int(x.shape[1] * 0.8)
+    x_val = x[:, train_size:]
+    x = x[:, :train_size]
+    y_val = y[:, train_size:]
+    y = y[:, :train_size]
     l = []
     l_val = []
     layers = 7
@@ -134,14 +157,20 @@ if __name__ == '__main__':
         w = np.random.randn(neurons[i + 1], neurons[i]) / np.sqrt(neurons[i])
         b = np.random.randn(neurons[i + 1], 1)
         wb.append({ "w": w, "b": b})
+    min = 1
+    i_min = -1
     for i in range(epoch + 1):
         y_mp, za = feedforward(wb, x, layers, neurons)
         y_mp_val, za_val = feedforward(wb, x_val, layers, neurons)
         l.append(loss(y[0], y_mp[0]))
         l_val.append(loss(y_val[0], y_mp_val[0]))
+        if l_val[-1] < min:
+            min = l_val[-1]
+            i_min = i
         if i % 100 == 0:
             print("epoch %d/%d - loss: %f - val_loss: %f" % (i, epoch, l[-1], l_val[-1]))
         wb = backpropagation(x, y, y_mp, wb, za, learning_rate)
+    print(min, i_min)
     count = 0
     for i in range(y.shape[1]):
         if y[0][i] == 1  and y_mp[0][i] > 0.5 or y[0][i] == 0  and y_mp[0][i] < 0.5:
@@ -152,4 +181,6 @@ if __name__ == '__main__':
         if y_val[0][i] == 1  and y_mp_val[0][i] > 0.5 or y_val[0][i] == 0  and y_mp_val[0][i] < 0.5:
             count += 1
     print(count / y_val.shape[1])
+    save_train_data(wb, layers, neurons)
     print_loss_graph(l, l_val)
+
