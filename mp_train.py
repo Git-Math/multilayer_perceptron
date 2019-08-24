@@ -50,9 +50,7 @@ def feedforward(wb, x, layers, neurons):
 
 def loss(y, y_mp):
     n = len(y)
-    y_mp[y_mp == 0.0] += 1e-15
-    y_mp[y_mp == 1.0] -= 1e-15
-    return -1 / n * (np.dot(y, np.log(y_mp).T) + np.dot(1 - y, np.log(1 - y_mp).T))
+    return -1 / n * (np.dot(y, np.log(y_mp + 1e-15).T) + np.dot(1 - y, np.log(1 - y_mp + 1e-15).T))
 
 def backpropagation(x, y, y_mp, wb, za, learning_rate):
     len_wb = len(wb)
@@ -133,19 +131,19 @@ if __name__ == '__main__':
     if not os.path.isfile(sys.argv[1]):
         error('no such file: %s' % sys.argv[1])
 
-    learning_rate = 0.03
-    epoch = 1780
+    learning_rate = 0.001
+    epoch = 30000
     feature_number = 30
     x, y = read_data(sys.argv[1], feature_number)
     x = scale(x)
-    train_size = int(x.shape[1] * 0.8)
+    train_size = int(x.shape[1] * 0.8) #TMP random split
     x_val = x[:, train_size:]
     x = x[:, :train_size]
     y_val = y[:, train_size:]
     y = y[:, :train_size]
     l = []
     l_val = []
-    layers = 7
+    layers = 5
     neurons = [feature_number]
     for i in range(layers - 2):
         neurons.append(int(feature_number * 2 / 3 + 1))
@@ -157,20 +155,22 @@ if __name__ == '__main__':
         w = np.random.randn(neurons[i + 1], neurons[i]) / np.sqrt(neurons[i])
         b = np.random.randn(neurons[i + 1], 1)
         wb.append({ "w": w, "b": b})
-    min = 1
-    i_min = -1
-    for i in range(epoch + 1):
+    no_val_prog = 0
+    for i in range(epoch + 1): #TMP think
         y_mp, za = feedforward(wb, x, layers, neurons)
         y_mp_val, za_val = feedforward(wb, x_val, layers, neurons)
         l.append(loss(y[0], y_mp[0]))
         l_val.append(loss(y_val[0], y_mp_val[0]))
-        if l_val[-1] < min:
-            min = l_val[-1]
-            i_min = i
+        if len(l_val) >= 2 and l_val[-1] >= l_val[-2]:
+            no_val_prog += 1
+        else:
+            no_val_prog = 0
         if i % 100 == 0:
-            print("epoch %d/%d - loss: %f - val_loss: %f" % (i, epoch, l[-1], l_val[-1]))
+            print("epoch %d/%d - loss: %.4f - val_loss: %.4f" % (i, epoch, l[-1], l_val[-1]))
         wb = backpropagation(x, y, y_mp, wb, za, learning_rate)
-    print(min, i_min)
+        if no_val_prog == 5:
+            print("epoch %d/%d - loss: %.4f - val_loss: %.4f" % (i, epoch, l[-1], l_val[-1]))
+            break
     count = 0
     for i in range(y.shape[1]):
         if y[0][i] == 1  and y_mp[0][i] > 0.5 or y[0][i] == 0  and y_mp[0][i] < 0.5:

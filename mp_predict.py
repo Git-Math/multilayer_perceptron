@@ -29,6 +29,27 @@ def load_train_data():
         error("load train data failed")
     return layers, neurons, wb
 
+def save_predict(y_mp):
+    try:
+        with open("predict.csv", "w") as predict_file:
+            for i in range(y_mp.shape[1]):
+                predict_file.write("M\n" if y_mp[0][i] > 0.5 else "B\n")
+            predict_file.close()
+    except:
+        error("save predict failed")
+
+def mean_squared_error(y, y_mp):
+    return 1 / y.shape[1] * np.sum((y_mp - y) ** 2)
+
+def mean_absolute_error(y, y_mp):
+    return 1 / y.shape[1] * np.sum(np.absolute(y_mp - y))
+
+def negative_log_likelihood(y_mp):
+    return -1 / y_mp.shape[1] * np.sum(np.log(y_mp + 1e-15))
+
+def kullback_leibler_divergence(y, y_mp):
+    return 1 / y.shape[1] * np.sum(y * (np.log(y + 1e-15) - np.log(y_mp + 1e-15)))
+
 if __name__ == '__main__':
     if len(sys.argv) != 2:
         usage()
@@ -44,9 +65,19 @@ if __name__ == '__main__':
         l = mp_train.loss(y[0], y_mp[0])
     except:
         error("invalid train data")
-    print("binary cross entropy error: %f" % l)
+    print("binary cross entropy: %.4f" % l)
+    mse = mean_squared_error(y, y_mp)
+    print("mean squared error: %.4f" % mse)
+    mae = mean_absolute_error(y, y_mp)
+    print("mean absolute error: %.4f" % mae)
+    nll = negative_log_likelihood(y_mp)
+    print("negative log likelihood: %.4f" % nll)
+    kld = kullback_leibler_divergence(y, y_mp)
+    print("kullback leibler divergence: %.4f" % kld)
     count = 0
     for i in range(y.shape[1]):
-        if y[0][i] == 1  and y_mp[0][i] > 0.5 or y[0][i] == 0  and y_mp[0][i] < 0.5:
+        if y[0][i] == 1  and y_mp[0][i] > 0.5 or y[0][i] == 0  and y_mp[0][i] <= 0.5:
             count += 1
-    print("prediction accuracy: %.2f%%" % round(count / y.shape[1], 2))
+    print("prediction accuracy: %d/%d" % (count, y.shape[1]))
+    print("prediction accuracy percentage: %.2f%%" % (count / y.shape[1] * 100))
+    save_predict(y_mp)
