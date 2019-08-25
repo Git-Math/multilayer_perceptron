@@ -57,7 +57,8 @@ if __name__ == '__main__':
         error('no such file: %s' % sys.argv[1])
 
     feature_number = 30
-    x, y = mp_train.read_data(sys.argv[1], feature_number)
+    data = mp_train.read_data(sys.argv[1], feature_number)
+    x, y = mp_train.split_xy(data)
     x = mp_train.scale(x)
     layers, neurons, wb = load_train_data()
     try:

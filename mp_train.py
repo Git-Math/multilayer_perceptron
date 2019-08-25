@@ -94,6 +94,24 @@ def save_train_data(wb, layers, neurons):
     except:
         error("save train data failed")
 
+def shuffle_data(data):
+    data = np.transpose(data)
+    np.random.shuffle(data)
+    return np.transpose(data)
+
+def split_xy(data):
+    x = data[2:, :]
+    y = data[:2, :]
+    return x, y
+
+def split_train_val(x, y):
+    train_size = int(x.shape[1] * 0.8)
+    x_val = x[:, train_size:]
+    x = x[:, :train_size]
+    y_val = y[:, train_size:]
+    y = y[:, :train_size]
+    return x, x_val, y, y_val
+
 def read_data(filename, feature_number):
     # checks
     if not os.path.isfile(filename):
@@ -105,25 +123,24 @@ def read_data(filename, feature_number):
             reader = csv.reader(fs)
             row_number = sum(1 for row in reader)
             fs.seek(0)
-            x = np.empty([feature_number, row_number])
-            y = np.empty([2, row_number])
+            data = np.empty([feature_number + 2, row_number])
             i_row = 0
             for row in reader:
                 for i, field in enumerate(row):
                     if i == 1:
                         if field == "M":
-                            y[0][i_row] = 1
-                            y[1][i_row] = 0
+                            data[0][i_row] = 1
+                            data[1][i_row] = 0
                         else:
-                            y[0][i_row] = 0
-                            y[1][i_row] = 1
-                    elif i >= 1:
-                        x[i - 2][i_row] = float(field)
+                            data[0][i_row] = 0
+                            data[1][i_row] = 1
+                    elif i > 1:
+                        data[i][i_row] = float(field)
                 i_row += 1
     except:
         error("invalid dataset")
 
-    return x, y
+    return data
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
@@ -131,25 +148,23 @@ if __name__ == '__main__':
     if not os.path.isfile(sys.argv[1]):
         error('no such file: %s' % sys.argv[1])
 
-    learning_rate = 0.001
-    epoch = 30000
+    learning_rate = 0.04
+    epoch = 10000
     feature_number = 30
-    x, y = read_data(sys.argv[1], feature_number)
+    np.random.seed(0)
+    data = read_data(sys.argv[1], feature_number)
+    data = shuffle_data(data)
+    x, y = split_xy(data)
     x = scale(x)
-    train_size = int(x.shape[1] * 0.8) #TMP random split
-    x_val = x[:, train_size:]
-    x = x[:, :train_size]
-    y_val = y[:, train_size:]
-    y = y[:, :train_size]
+    x, x_val, y, y_val = split_train_val(x, y)
     l = []
     l_val = []
-    layers = 5
+    layers = 4
     neurons = [feature_number]
     for i in range(layers - 2):
         neurons.append(int(feature_number * 2 / 3 + 1))
     neurons.append(2)
     # He initialization
-    np.random.seed(0)
     wb = []
     for i in range(layers - 1):
         w = np.random.randn(neurons[i + 1], neurons[i]) / np.sqrt(neurons[i])
@@ -174,16 +189,6 @@ if __name__ == '__main__':
             print("epoch %d/%d - loss: %.4f - val_loss: %.4f" % (i, epoch, l[-1], l_val[-1]))
         if i < epoch:
             wb = backpropagation(x, y, y_mp, wb, za, learning_rate)
-    count = 0
-    for i in range(y.shape[1]):
-        if y[0][i] == 1  and y_mp[0][i] > 0.5 or y[0][i] == 0  and y_mp[0][i] < 0.5:
-            count += 1
-    print(count / y.shape[1])
-    count = 0
-    for i in range(y_val.shape[1]):
-        if y_val[0][i] == 1  and y_mp_val[0][i] > 0.5 or y_val[0][i] == 0  and y_mp_val[0][i] < 0.5:
-            count += 1
-    print(count / y_val.shape[1])
     save_train_data(wb, layers, neurons)
     print_loss_graph(l, l_val)
 
