@@ -155,22 +155,25 @@ if __name__ == '__main__':
         w = np.random.randn(neurons[i + 1], neurons[i]) / np.sqrt(neurons[i])
         b = np.random.randn(neurons[i + 1], 1)
         wb.append({ "w": w, "b": b})
+    val_low = sys.float_info.max
     no_val_prog = 0
-    for i in range(epoch + 1): #TMP think
+    for i in range(epoch + 1):
         y_mp, za = feedforward(wb, x, layers, neurons)
         y_mp_val, za_val = feedforward(wb, x_val, layers, neurons)
         l.append(loss(y[0], y_mp[0]))
         l_val.append(loss(y_val[0], y_mp_val[0]))
-        if len(l_val) >= 2 and l_val[-1] >= l_val[-2]:
+        if l_val[-1] >= val_low:
             no_val_prog += 1
         else:
             no_val_prog = 0
+            val_low = l_val[-1]
+        if no_val_prog == 10:
+            print("early stop epoch %d/%d - loss: %.4f - val_loss: %.4f" % (i, epoch, l[-1], l_val[-1]))
+            break
         if i % 100 == 0:
             print("epoch %d/%d - loss: %.4f - val_loss: %.4f" % (i, epoch, l[-1], l_val[-1]))
-        wb = backpropagation(x, y, y_mp, wb, za, learning_rate)
-        if no_val_prog == 5:
-            print("epoch %d/%d - loss: %.4f - val_loss: %.4f" % (i, epoch, l[-1], l_val[-1]))
-            break
+        if i < epoch:
+            wb = backpropagation(x, y, y_mp, wb, za, learning_rate)
     count = 0
     for i in range(y.shape[1]):
         if y[0][i] == 1  and y_mp[0][i] > 0.5 or y[0][i] == 0  and y_mp[0][i] < 0.5:
