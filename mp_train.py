@@ -14,15 +14,14 @@ layers_filename = "layers.csv"
 neurons_filename = "neurons.csv"
 w_filename = "w"
 b_filename = "b"
+x_min_filename = "x_min"
+x_max_filename = "x_max"
 
 def usage():
     error('%s [dataset]' % sys.argv[0])
 
-def scale(feature_matrix):
-    min_matrix = np.min(feature_matrix, axis = 1).reshape(-1, 1)
-    max_matrix = np.max(feature_matrix, axis = 1).reshape(-1, 1)
-    scaled_feature_matrix = (feature_matrix - min_matrix) / (max_matrix - min_matrix)
-    return scaled_feature_matrix
+def scale(x, x_min, x_max):
+    return (x - x_min) / (x_max - x_min)
 
 def relu(z):
     return np.maximum(0, z)
@@ -77,7 +76,7 @@ def print_loss_graph(l, l_val):
     plt.title("Loss Graph")
     plt.show()
 
-def save_train_data(wb, layers, neurons):
+def save_train_data(wb, layers, neurons, x_min, x_max):
     try:
         os.makedirs(train_data_dirname, exist_ok=True)
         with open(train_data_dirname + "/" + layers_filename, "w") as layers_file:
@@ -91,6 +90,8 @@ def save_train_data(wb, layers, neurons):
         for (i, e) in enumerate(wb):
             np.save(train_data_dirname + "/" + w_filename + str(i), e["w"])
             np.save(train_data_dirname + "/" + b_filename + str(i), e["b"])
+        np.save(train_data_dirname + "/" + x_min_filename, x_min)
+        np.save(train_data_dirname + "/" + x_max_filename, x_max)
     except:
         error("save train data failed")
 
@@ -155,7 +156,9 @@ if __name__ == '__main__':
     data = read_data(sys.argv[1], feature_number)
     data = shuffle_data(data)
     x, y = split_xy(data)
-    x = scale(x)
+    x_min = np.min(x, axis = 1).reshape(-1, 1)
+    x_max = np.max(x, axis = 1).reshape(-1, 1)
+    x = scale(x, x_min, x_max)
     x, x_val, y, y_val = split_train_val(x, y)
     l = []
     l_val = []
@@ -189,6 +192,6 @@ if __name__ == '__main__':
             print("epoch %d/%d - loss: %.4f - val_loss: %.4f" % (i, epoch, l[-1], l_val[-1]))
         if i < epoch:
             wb = backpropagation(x, y, y_mp, wb, za, learning_rate)
-    save_train_data(wb, layers, neurons)
+    save_train_data(wb, layers, neurons, x_min, x_max)
     print_loss_graph(l, l_val)
 

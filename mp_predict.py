@@ -25,9 +25,11 @@ def load_train_data():
             w = np.load(mp_train.train_data_dirname + "/" + mp_train.w_filename + str(i) + ".npy")
             b = np.load(mp_train.train_data_dirname + "/" + mp_train.b_filename + str(i) + ".npy")
             wb.append({ "w": w, "b": b})
+        x_min = np.load(mp_train.train_data_dirname + "/" + mp_train.x_min_filename + ".npy")
+        x_max = np.load(mp_train.train_data_dirname + "/" + mp_train.x_max_filename + ".npy")
     except:
         error("load train data failed")
-    return layers, neurons, wb
+    return layers, neurons, wb, x_min, x_max
 
 def save_predict(y_mp):
     try:
@@ -47,9 +49,6 @@ def mean_absolute_error(y, y_mp):
 def negative_log_likelihood(y_mp):
     return -1 / y_mp.shape[1] * np.sum(np.log(y_mp + 1e-15))
 
-def kullback_leibler_divergence(y, y_mp):
-    return 1 / y.shape[1] * np.sum(y * (np.log(y + 1e-15) - np.log(y_mp + 1e-15)))
-
 if __name__ == '__main__':
     if len(sys.argv) != 2:
         usage()
@@ -59,8 +58,8 @@ if __name__ == '__main__':
     feature_number = 30
     data = mp_train.read_data(sys.argv[1], feature_number)
     x, y = mp_train.split_xy(data)
-    x = mp_train.scale(x)
-    layers, neurons, wb = load_train_data()
+    layers, neurons, wb, x_min, x_max = load_train_data()
+    x = mp_train.scale(x, x_min, x_max)
     try:
         y_mp, za = mp_train.feedforward(wb, x, layers, neurons)
         l = mp_train.loss(y[0], y_mp[0])
@@ -73,8 +72,6 @@ if __name__ == '__main__':
     print("mean absolute error: %.4f" % mae)
     nll = negative_log_likelihood(y_mp)
     print("negative log likelihood: %.4f" % nll)
-    kld = kullback_leibler_divergence(y, y_mp)
-    print("kullback leibler divergence: %.4f" % kld)
     count = 0
     for i in range(y.shape[1]):
         if y[0][i] == 1  and y_mp[0][i] > 0.5 or y[0][i] == 0  and y_mp[0][i] <= 0.5:
