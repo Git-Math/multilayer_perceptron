@@ -149,8 +149,8 @@ if __name__ == '__main__':
     if not os.path.isfile(sys.argv[1]):
         error('no such file: %s' % sys.argv[1])
 
-    learning_rate = 0.04
-    epoch = 10000
+    learning_rate = 0.03
+    epoch = 20000
     feature_number = 30
     np.random.seed(0)
     data = read_data(sys.argv[1], feature_number)
@@ -180,15 +180,15 @@ if __name__ == '__main__':
         y_mp_val, za_val = feedforward(wb, x_val, layers, neurons)
         l.append(loss(y[0], y_mp[0]))
         l_val.append(loss(y_val[0], y_mp_val[0]))
-        if l_val[-1] >= val_low:
+        if l_val[-1] > val_low and i > 100:
             no_val_prog += 1
         else:
             no_val_prog = 0
             val_low = l_val[-1]
-        if no_val_prog == 10:
+        if no_val_prog == 20:
             print("early stop epoch %d/%d - loss: %.4f - val_loss: %.4f" % (i, epoch, l[-1], l_val[-1]))
             break
-        if i % 100 == 0:
+        if i % 1 == 0:
             print("epoch %d/%d - loss: %.4f - val_loss: %.4f" % (i, epoch, l[-1], l_val[-1]))
         if i < epoch:
             wb = backpropagation(x, y, y_mp, wb, za, learning_rate)
